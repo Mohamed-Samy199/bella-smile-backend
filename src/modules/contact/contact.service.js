@@ -18,6 +18,7 @@ export const submitContact = async (data) => {
   } catch (err) {
     // لو الـ email فشل مش هنرجع error للـ user
     // بس هنلوج المشكلة
+    console.error(err);
     console.error("❌ Failed to send contact email:", err.message);
   }
 
