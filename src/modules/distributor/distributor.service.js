@@ -76,7 +76,7 @@ export const updateDistributor = async (id, data) => {
     model: Distributor,
     id,
     update: { $set: data },
-    options: { new: true },
+    options: { returnDocument: "after" },
   });
   if (!updated) throw ApiError.notFound("Distributor not found.");
   return updated;
@@ -89,7 +89,7 @@ export const deactivateDistributor = async (id) => {
     model: Distributor,
     id,
     update: { $set: { isActive: false } },
-    options: { new: true },
+    options: { returnDocument: "after" },
   });
   if (!distributor) throw ApiError.notFound("Distributor not found.");
   return distributor;

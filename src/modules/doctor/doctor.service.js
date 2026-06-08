@@ -202,7 +202,7 @@ export const updateDoctor = async (id, data) => {
     model: Doctor,
     id,
     update: { $set: doctorFields },
-    options: { new: true },
+    options: { returnDocument: "after" },
   });
 
   return updated;
@@ -215,7 +215,7 @@ export const deactivateDoctor = async (id) => {
     model: Doctor,
     id,
     update: { $set: { isActive: false } },
-    options: { new: true },
+    options: { returnDocument: "after" },
   });
   if (!doctor) throw ApiError.notFound("Doctor not found.");
 

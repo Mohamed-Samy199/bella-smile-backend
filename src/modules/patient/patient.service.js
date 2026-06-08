@@ -186,7 +186,7 @@ export const updatePatient = async (id, data, currentUser) => {
     model: Patient,
     id: patient._id,
     update: { $set: data },
-    options: { new: true },
+    options: { returnDocument: "after" },
   });
 };
 
@@ -195,7 +195,7 @@ export const deletePatient = async (id) => {
     model: Patient,
     id,
     update: { $set: { isActive: false } },
-    options: { new: true },
+    options: { returnDocument: "after" },
   });
   if (!patient) throw ApiError.notFound("Patient not found.");
   return patient;
@@ -563,7 +563,7 @@ export const updateManagement = async (patientId, data, currentUser) => {
         numAligners: total,
       },
     },
-    options: { new: true },
+    options: { returnDocument: "after" },
   });
 
   if (!patient) throw ApiError.notFound("Patient not found.");
@@ -638,7 +638,7 @@ export const updateCarePlan = async (patientId, data, currentUser) => {
         numAligners: total,
       },
     },
-    options: { new: true },
+    options: { returnDocument: "after" },
   });
 
   if (!patient) throw ApiError.notFound("Patient not found.");

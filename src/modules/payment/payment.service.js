@@ -289,7 +289,7 @@ export const togglePaymentExempt = async (doctorId, exempt, adminId) => {
         paymentExemptGrantedAt: new Date(),
       },
     },
-    { new: true }
+    { returnDocument: "after" }
   );
   if (!doctor) throw ApiError.notFound("Doctor not found.");
   return doctor;

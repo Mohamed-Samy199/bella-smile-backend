@@ -81,7 +81,7 @@ export const updateAreaManager = async (id, data) => {
     model: AreaManager,
     id,
     update: { $set: data },
-    options: { new: true },
+    options: { returnDocument: "after" },
   });
   if (!updated) throw ApiError.notFound("Area manager not found.");
   return updated;
@@ -94,7 +94,7 @@ export const deactivateAreaManager = async (id) => {
     model: AreaManager,
     id,
     update: { $set: { isActive: false } },
-    options: { new: true },
+    options: { returnDocument: "after" },
   });
   if (!areaManager) throw ApiError.notFound("Area manager not found.");
   return areaManager;
