@@ -1,6 +1,6 @@
 import * as authService from "./auth.service.js";
-import { ApiResponse } from "../../utils/ApiResponse.js";
 import asyncHandler from "../../utils/asyncHandler.js";
+import { ApiResponse } from "../../utils/ApiResponse.js";
 
 /**
  * POST /api/auth/register

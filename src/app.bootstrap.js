@@ -59,22 +59,23 @@ const sanitizeObject = (obj) => {
 
 
 const ALLOWED_ORIGINS = [
-  process.env.CLIENT_URL,
+  process.env.CLIENT_URL,           // https://bella-smile.vercel.app
+  "http://localhost:5173",
   "http://localhost:3000",
 ].filter(Boolean);
 
-
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin && process.env.NODE_ENV === process.env.DEVELOPMENT) {
-      return callback(null, true);
-    }
+    // لو مفيش origin (Postman أو server-to-server)
+    if (!origin) return callback(null, true);
+
     if (ALLOWED_ORIGINS.includes(origin)) {
       return callback(null, true);
     }
+
     callback(new Error("Not allowed by CORS"));
   },
-  methods:     ["GET", "POST", "PUT", "PATCH", "DELETE"],
+  methods:     ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   credentials: true,
 }));
 
