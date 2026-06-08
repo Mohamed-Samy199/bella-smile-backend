@@ -136,7 +136,7 @@ export const createCheckoutSession = async (patientId, currentUser) => {
       doctor:          doctor._id,
       patient:         patientId,
       stripeSessionId: session.id,
-      amount:          amountInCents,
+      amount:          totalAmount,
       currency,
       numAligners,
       pricePerAligner,
