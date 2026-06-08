@@ -28,7 +28,7 @@ const app = express();
 );
   
 // ── Security & Parsing Middlewares ────────────────────────────────────────────
-
+app.set("trust proxy", 1);
 app.use(helmet());
 app.use(helmet.contentSecurityPolicy({
   directives: {
