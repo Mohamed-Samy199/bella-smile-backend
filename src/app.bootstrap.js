@@ -109,7 +109,7 @@ app.use("/api/pricing", pricingRoutes);
 
 // health check
 app.get("/api/health", (req, res) => {
-  res.status(200).json({ success: true, message: "PostFlow API is running." });
+  res.status(200).json({ success: true, message: "Bella Smile API is running." });
 });
 
 // catch-all for unknown routes
