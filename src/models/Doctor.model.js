@@ -57,7 +57,7 @@ const doctorSchema = new mongoose.Schema(
 
     // ── Business Info ─────────────────────────────────────────────────────────
     agency: {
-      type: String,                              // Deposito
+      type: String,                              
     },
 
     isActive: {
