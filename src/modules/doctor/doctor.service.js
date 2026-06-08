@@ -78,7 +78,7 @@ export const createDoctor = async (data) => {
       phone,
       areaManager: areaManager || null,
       distributor: distributor || null,
-      agency:     agency     || 0,
+      agency:      agency      || null
     },
   });
 

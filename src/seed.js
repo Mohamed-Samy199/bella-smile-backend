@@ -116,7 +116,7 @@ const seedDoctor = async (distributor, areaManager) => {
     phone:       "06 98765432",
     areaManager: areaManager._id,
     distributor: distributor._id,
-    agency:     "",
+    agency: "Smile"
   });
 
   console.log("✅ Sample doctor created:");
