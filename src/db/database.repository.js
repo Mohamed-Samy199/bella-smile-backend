@@ -130,102 +130,53 @@ export const updateOne = async ({
   );
 }
 
-// export const findOneAndUpdate = async ({
-//   filter,
-//   update,
-//   options,
-//   model
-
-// } = {}) => {
-//   if (Array.isArray(update)) {
-//     update.push({
-//       $set: {
-//         __v: { $add: ["$__v", 1] },
-//       },
-//     });
-//     return await model.findOneAndUpdate(filter || {}, update, {
-//       new: true,
-//       runValidators: true,
-
-//       ...options,
-//       updatePipeline: true,
-//     }
-//     );
-//   }
-//   return await model.findOneAndUpdate(
-//     filter || {},
-//     { ...update, $inc: { __v: 1 } },
-//     {
-//       new: true,
-//       runValidators: true,
-
-//       ...options,
-//     }
-//   );
-// }
-
-// export const findByIdAndUpdate = async ({
-//   id,
-//   update,
-//   options = { new: true },
-//   model
-
-// }) => {
-//   return await model.findByIdAndUpdate(
-//     id,
-//     { ...update, $inc: { __v: 1 } },
-//     options
-//   );
-// }
-
 export const findOneAndUpdate = async ({
   filter,
   update,
   options,
-  model,
+  model
+
 } = {}) => {
   if (Array.isArray(update)) {
-    update.push({ $set: { __v: { $add: ["$__v", 1] } } });
-    return await model.findOneAndUpdate(
-      filter || {},
-      update,
-      {
-        returnDocument: "after",   // ← بدل new: true
-        runValidators:  true,
-        ...options,
-        updatePipeline: true,
-      }
+    update.push({
+      $set: {
+        __v: { $add: ["$__v", 1] },
+      },
+    });
+    return await model.findOneAndUpdate(filter || {}, update, {
+      new: true,
+      runValidators: true,
+
+      ...options,
+      updatePipeline: true,
+    }
     );
   }
-
   return await model.findOneAndUpdate(
     filter || {},
     { ...update, $inc: { __v: 1 } },
     {
-      returnDocument: "after",   // ← بدل new: true
-      runValidators:  true,
+      new: true,
+      runValidators: true,
+
       ...options,
     }
   );
-};
-
+}
 
 export const findByIdAndUpdate = async ({
   id,
   update,
-  options = {},
-  model,
+  options = { new: true },
+  model
+
 }) => {
   return await model.findByIdAndUpdate(
     id,
     { ...update, $inc: { __v: 1 } },
-    {
-      returnDocument: "after",   // ← بدل new: true
-      runValidators:  true,
-      ...options,
-    }
+    options
   );
-};
+}
 
 export const deleteOne = async ({
   filter,

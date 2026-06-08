@@ -175,7 +175,7 @@ export const handleStripeWebhook = async (rawBody, signature) => {
     stripeEventId: event.id,
   });
   if (alreadyProcessed) {
-    console.log(`Event ${event.id} already processed — skipping.`);
+    // console.log(`Event ${event.id} already processed — skipping.`);
     return { received: true };
   }
 
