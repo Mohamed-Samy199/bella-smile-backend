@@ -146,7 +146,7 @@ statusEnum      → pending, succeeded, failed, refunded
 |---|---|---|
 | user | ObjectId ref User | required |
 | firstName, lastName | String | |
-| email, phone, city | String | |
+| email, phone, city, agency | String | |
 | deposit | Number | |
 | paymentExempt | Boolean | default false |
 | paymentExemptGrantedBy | ObjectId ref User | audit |

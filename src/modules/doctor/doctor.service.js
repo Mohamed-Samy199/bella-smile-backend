@@ -42,7 +42,7 @@ export const createDoctor = async (data) => {
     email, password,
     firstName, lastName,
     address, city, phone,
-    areaManager, distributor, deposit,
+    areaManager, distributor, agency,
   } = data;
 
   // 1) email مش متكرر
@@ -78,7 +78,7 @@ export const createDoctor = async (data) => {
       phone,
       areaManager: areaManager || null,
       distributor: distributor || null,
-      deposit:     deposit     || 0,
+      agency:     agency     || 0,
     },
   });
 
