@@ -243,7 +243,7 @@ const handleSessionCompleted = async (session, eventId) => {
   patient.phaseHistory.push({
     phase:     phasesEnum.PREPARAZIONE,
     changedBy: payment.doctor,
-    notes:     `Payment confirmed — ${payment.numAligners} aligners — ${payment.currency.toUpperCase()} ${payment.amount / 100}`,
+    notes:     `Payment confirmed — ${payment.numAligners} aligners — ${payment.currency.toUpperCase()} ${payment.amount}`,
     changedAt: new Date(),
   });
 
