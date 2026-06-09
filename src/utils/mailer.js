@@ -14,8 +14,7 @@ dns.setDefaultResultOrder("ipv4first");
 //   },
 //    family: 4,
 // });
-
-
+console.log("📧 mailer.js loaded");
 export const transporter = nodemailer.createTransport({
   host:   "smtp.gmail.com",
   port:   587,        // ✅ بدل 465
