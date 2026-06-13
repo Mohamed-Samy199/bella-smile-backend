@@ -72,8 +72,7 @@ const transitionPhase = async (id, options, currentUser) => {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // CRUD
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-export const createPatient = async (data, currentUser) => {
+export const createPatient = async (data, files, currentUser) => {
   let doctorId = data.doctor;
 
   if (currentUser.role === "doctor") {
@@ -93,7 +92,8 @@ export const createPatient = async (data, currentUser) => {
   });
   if (!doctorExists) throw ApiError.notFound("Doctor not found.");
 
-  return await create({
+  // ── انشئ المريض أولاً ─────────────────────────────────────
+  const patient = await create({
     model: Patient,
     data: {
       ...data,
@@ -106,10 +106,38 @@ export const createPatient = async (data, currentUser) => {
       }],
     },
   });
+
+  // ── لو فيه صور → ارفعهم ──────────────────────────────────
+  if (files && files.length > 0) {
+    const uploadedDocuments = [];
+
+    for (const file of files) {
+      const result = await uploadToCloudinary(
+        file.buffer,
+        `bella-smile/patients/${patient._id}`
+      );
+
+      uploadedDocuments.push({
+        fileName: file.originalname,
+        url: result.secure_url,
+        publicId: result.public_id,
+        resourceType: result.resource_type,
+        mimeType: file.mimetype,
+        size: file.size,
+        category: "patient-photo",
+        uploadedBy: currentUser._id,
+        uploadedAt: new Date(),
+      });
+    }
+
+    patient.documents.push(...uploadedDocuments);
+    await patient.save();
+  }
+  return patient;
 };
 
 export const getAllPatients = async (query, currentUser) => {
-  const { page, size, search, phase, nationality, dataPronte, dataAccettazione } = query;
+  const { page, size, search, phase, nationality, dataPronte } = query;
   const filter = { isActive: true };
 
   if (currentUser.role === "doctor") {
@@ -125,7 +153,6 @@ export const getAllPatients = async (query, currentUser) => {
   if (phase) filter.currentPhase = phase;
   if (nationality) filter.nationality = { $regex: nationality, $options: "i" };
   if (dataPronte) filter.dataPronte = { $gte: new Date(dataPronte) };
-  if (dataAccettazione) filter.dataAccettazione = { $gte: new Date(dataAccettazione) };
   if (search) {
     filter.$or = [
       { firstName: { $regex: search, $options: "i" } },
@@ -201,6 +228,43 @@ export const deletePatient = async (id) => {
   return patient;
 };
 
+// ── Set Case Price (Admin only) ───────────────────────────────
+export const setCasePrice = async (patientId, data, currentUser) => {
+  const { amount, currency, note } = data;
+
+  const patient = await findById({
+    model: Patient,
+    id: patientId,
+    options: { lean: false },
+  });
+  if (!patient) throw ApiError.notFound("Patient not found.");
+
+  // لازم يكون في Photographic Evaluation Verification
+  if (patient.currentPhase !== phasesEnum.VERIFICA_VALUTAZIONE_FOTOGRAFICA) {
+    throw ApiError.badRequest(
+      "Case price can only be set in Photographic Evaluation Verification phase."
+    );
+  }
+
+  patient.casePrice = {
+    amount,
+    currency: currency || "eur",
+    setBy: currentUser._id,
+    setAt: new Date(),
+    note: note || "",
+  };
+
+  await patient.save();
+
+  await logActivity(
+    patientId,
+    `Case price set: ${currency || "eur"} ${amount}`,
+    currentUser
+  );
+
+  return patient.casePrice;
+};
+
 // ── Manual Phase Override (Admin) ─────────────────────────────────────────────
 export const changePhase = async (id, { phase, notes }, currentUser) => {
   const patient = await findById({
@@ -254,33 +318,30 @@ export const photographicEvaluation = (id, body, user) =>
     notes: body.notes,
   }, user);
 
-export const suitabilityAndPickUp = (id, body, user) => {
-  const { eligibility, notes, treatment, numAligners, dataPronte } = body;
+export const suitabilityAndPickUp = async (id, body, user) => {
+  const { eligibility, notes, dataPronte } = body;
 
-  // لو Non Idoneo → روح لـ NON_IDONEO
-  if (eligibility === eligibilityEnum.NON_IDONEO) {
-    return transitionPhase(id, {
-      fromPhase: phasesEnum.VERIFICA_VALUTAZIONE_FOTOGRAFICA,
-      toPhase: phasesEnum.NON_IDONEO,
-      notes,
-      extraFields: { eligibility },
-    }, user);
+  // ── تشيك إن الأدمن حط السعر الأول ──────────────────────────
+  const patient = await findById({
+    model: Patient,
+    id,
+    options: { lean: true },
+  });
+  if (!patient) throw ApiError.notFound("Patient not found.");
+
+  if (!patient.casePrice?.amount) {
+    throw ApiError.badRequest(
+      "Case price must be set by admin before proceeding to suitability."
+    );
   }
 
-  // لو Idoneo → روح مباشرة لـ Pick Up
   return transitionPhase(id, {
     fromPhase: phasesEnum.VERIFICA_VALUTAZIONE_FOTOGRAFICA,
     toPhase: phasesEnum.RITIRO,
     notes,
-    extraFields: {
-      eligibility,
-      ...(treatment && { treatment }),
-      ...(numAligners && { numAligners }),
-      dataPronte: dataPronte || new Date(),
-    },
+    extraFields: {},
   }, user);
 };
-
 
 export const preparation = async (id, body, currentUser) => {
 
@@ -327,7 +388,7 @@ export const preparation = async (id, body, currentUser) => {
   return transitionPhase(id, {
     fromPhase: phasesEnum.RITIRO,
     toPhase: phasesEnum.PREPARAZIONE,
-    notes: body.notes || `Paid — ${payment.numAligners} aligners`,
+    notes: body.notes || `Paid —  aligners`,
   }, currentUser);
 };
 
@@ -345,7 +406,23 @@ export const attesaAccettazione = (id, body, user) =>
     fromPhase: phasesEnum.VERIFICA_PIANO_CURA,
     toPhase: phasesEnum.ATTESA_ACCETTAZIONE,
     notes: body.notes,
-    extraFields: { dataAccettazione: new Date() },
+    extraFields: {},
+  }, user);
+
+// ── Complete from STL ─────────────────────────────────────────
+export const completaFromStl = (id, body, user) =>
+  transitionPhase(id, {
+    fromPhase: phasesEnum.STL,
+    toPhase: phasesEnum.COMPLETATO,
+    notes: body.notes,
+  }, user);
+
+// ── Complete from Manufacturing ───────────────────────────────
+export const completaFromManufacturing = (id, body, user) =>
+  transitionPhase(id, {
+    fromPhase: phasesEnum.MANUFACTURING,
+    toPhase: phasesEnum.COMPLETATO,
+    notes: body.notes,
   }, user);
 
 export const completaOSecondaFase = (id, body, user) =>
@@ -354,47 +431,58 @@ export const completaOSecondaFase = (id, body, user) =>
     toPhase: phasesEnum.COMPLETATO,
     notes: body.notes,
     extraFields: {
-      acceptanceDecision: "manufacturing",
+      // acceptanceDecision: "manufacturing",
     },
   }, user);
 
-export const setAcceptanceDecision = async (
-  patientId,
-  decision,
-  currentUser
-) => {
-  const patient = await Patient.findById(patientId);
+export const setAcceptanceDecision = async (patientId, decision, currentUser) => {
+  const patient = await findById({
+    model: Patient,
+    id: patientId,
+    options: { lean: false },
+  });
+  if (!patient) throw ApiError.notFound("Patient not found.");
 
-  if (!patient) {
-    throw ApiError.notFound("Patient not found");
-  }
-
-  if (
-    patient.currentPhase !== phasesEnum.ATTESA_ACCETTAZIONE
-  ) {
-    throw ApiError.badRequest(
-      "Patient must be in Waiting for Acceptance"
-    );
+  if (patient.currentPhase !== phasesEnum.ATTESA_ACCETTAZIONE) {
+    throw ApiError.badRequest("Patient must be in Waiting for Acceptance.");
   }
 
   const allowed = ["pending", "stl", "manufacturing"];
-
   if (!allowed.includes(decision)) {
-    throw ApiError.badRequest("Invalid decision");
+    throw ApiError.badRequest("Invalid decision.");
   }
 
   patient.acceptanceDecision = decision;
+  patient.acceptanceDecisionAt = decision === "pending" ? null : new Date();
 
-  patient.acceptanceDecisionAt =
-    decision === "pending"
-      ? null
-      : new Date();
+  // ── انقل المريض للمرحلة المناسبة ─────────────────────────
+  if (decision === "stl") {
+    patient.currentPhase = phasesEnum.STL;
+    addPhaseHistory(
+      patient,
+      phasesEnum.STL,
+      currentUser._id,
+      "Moved to STL phase"
+    );
+  } else if (decision === "manufacturing") {
+    patient.currentPhase = phasesEnum.MANUFACTURING;
+    addPhaseHistory(
+      patient,
+      phasesEnum.MANUFACTURING,
+      currentUser._id,
+      "Moved to Manufacturing phase"
+    );
+  }
+  // لو pending → مبيتنقلش من Waiting for Acceptance
 
   await patient.save();
 
   await logActivity(
     patientId,
-    `Acceptance decision changed to: ${decision}`,
+    `Acceptance decision: ${decision}${decision !== "pending"
+      ? ` → moved to ${patient.currentPhase}`
+      : " (reset)"
+    }`,
     currentUser
   );
 
@@ -530,53 +618,91 @@ export const deleteDocument = async (
   );
 };
 
+export const updatePreviewLink = async (patientId, previewLink, currentUser) => {
+  const patient = await findByIdAndUpdate({
+    model: Patient,
+    id: patientId,
+    update: { $set: { previewLink } },
+    options: { returnDocument: "after" },
+  });
+  if (!patient) throw ApiError.notFound("Patient not found.");
 
+  await logActivity(patientId, `Preview link updated`, currentUser);
+  return { previewLink: patient.previewLink };
+};
 
 // ── Management ────────────────────────────────────────────────
+
 export const updateManagement = async (patientId, data, currentUser) => {
   const {
     arcataSuperiore,
     arcataInferiore,
+    eligibility,
     ...managementFields
   } = data;
 
-  // حساب الـ total
   const sup = Number(arcataSuperiore ?? 0);
   const inf = Number(arcataInferiore ?? 0);
   const total = sup + inf;
 
+  // ── بناء الـ $set object (dot-notation للـ MongoDB) ──────
+  const setFields = {
+    "management.arcataSuperiore": sup,
+    "management.arcataInferiore": inf,
+    numAligners: total,
+  };
+
+  Object.entries(managementFields).forEach(([k, v]) => {
+    setFields[`management.${k}`] = v;
+  });
+
+  if (eligibility) {
+    setFields["management.eligibility"] = eligibility;
+    setFields["eligibility"] = eligibility;
+
+    if (
+      eligibility === eligibilityEnum.NON_IDONEO ||
+      eligibility === "Not Suitable"
+    ) {
+      setFields["currentPhase"] = phasesEnum.NON_IDONEO;
+    }
+  }
+
+  // ── findByIdAndUpdate بدل Object.assign + save ───────────
   const patient = await findByIdAndUpdate({
     model: Patient,
     id: patientId,
-    update: {
-      $set: {
-        // حدث الـ management
-        "management.arcataSuperiore": sup,
-        "management.arcataInferiore": inf,
-        ...Object.fromEntries(
-          Object.entries(managementFields).map(([k, v]) => [
-            `management.${k}`,
-            v,
-          ])
-        ),
-        // حدث numAligners في الـ root مباشرة
-        numAligners: total,
-      },
-    },
-    options: { returnDocument: "after" },
+    update: { $set: setFields },
+    options: { returnDocument: "after", lean: false },
   });
-
   if (!patient) throw ApiError.notFound("Patient not found.");
+
+  // ── phaseHistory محتاج patient instance (مش ممكن في $set) 
+  if (
+    eligibility === "Not Suitable" ||
+    eligibility === eligibilityEnum.NON_IDONEO
+  ) {
+    patient.phaseHistory.push({
+      phase: phasesEnum.NON_IDONEO,
+      changedBy: currentUser._id,
+      notes: "Eligibility set to Not Suitable via Management",
+      changedAt: new Date(),
+    });
+    await patient.save();
+  }
 
   await logActivity(
     patientId,
-    `Updated management — aligners: ${sup} upper + ${inf} lower = ${total}`,
+    `Updated management — aligners: ${sup} upper + ${inf} lower = ${total}${eligibility ? ` — eligibility: ${eligibility}` : ""
+    }`,
     currentUser
   );
 
   return {
     management: patient.management,
-    numAligners: patient.numAligners,
+    // numAligners:  patient.numAligners,
+    eligibility: patient.eligibility,
+    currentPhase: patient.currentPhase,
   };
 };
 
@@ -652,7 +778,6 @@ export const updateCarePlan = async (patientId, data, currentUser) => {
   return patient.carePlan;
 };
 
-// patient.service.js
 export const getActivityLog = async (patientId, query = {}) => {
   const patient = await findById({
     model: Patient, id: patientId, options: { lean: true },
@@ -682,38 +807,142 @@ export const getActivityLog = async (patientId, query = {}) => {
   };
 };
 
-
-// في patient.service.js
-
-export const addNote = async (patientId, message, currentUser) => {
+// ── Add Note ──────────────────────────────────────────────────
+export const addNote = async (patientId, message, isInternal, currentUser) => {
   const patient = await findById({
-    model: Patient, id: patientId, options: { lean: false },
+    model: Patient,
+    id: patientId,
+    options: { lean: false },
   });
   if (!patient) throw ApiError.notFound("Patient not found.");
+
+  // لو مش admin وبيحاول يبعت internal note → منع
+  if (isInternal && currentUser.role !== "admin") {
+    throw ApiError.forbidden("Only admins can send internal notes.");
+  }
 
   patient.notes.push({
     message,
     sentBy: currentUser._id,
     sentByName: currentUser.name,
     sentByRole: currentUser.role,
+    isInternal: isInternal || false,
     createdAt: new Date(),
   });
 
   await patient.save();
+  await logActivity(
+    patientId,
+    `Added a ${isInternal ? "internal " : ""}note`,
+    currentUser
+  );
 
-  await logActivity(patientId, `Added a note`, currentUser);
-
-  // رجّع الـ note الأخيرة
   return patient.notes[patient.notes.length - 1];
 };
 
-export const getNotes = async (patientId) => {
+// ── Get Notes ─────────────────────────────────────────────────
+export const getNotes = async (patientId, currentUser) => {
   const patient = await findById({
-    model: Patient, id: patientId, options: { lean: true },
+    model: Patient,
+    id: patientId,
+    options: { lean: true },
   });
   if (!patient) throw ApiError.notFound("Patient not found.");
 
-  return [...(patient.notes || [])].sort(
+  const notes = patient.notes || [];
+
+  // Doctor → يشوف بس الـ notes العادية (isInternal = false)
+  const filtered = currentUser.role === "admin"
+    ? notes
+    : notes.filter((n) => !n.isInternal);
+
+  return [...filtered].sort(
     (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
   );
+};
+
+// ── Doctor:Request for retreatment ────────────────────────────────────
+export const requestRetreatment = async (patientId, note, currentUser) => {
+  const patient = await findById({
+    model: Patient, id: patientId, options: { lean: false },
+  });
+  if (!patient) throw ApiError.notFound("Patient not found.");
+
+  // لازم يكون Completed
+  if (patient.currentPhase !== phasesEnum.COMPLETATO) {
+    throw ApiError.badRequest(
+      "Re-treatment can only be requested for Completed patients."
+    );
+  }
+
+  // لو فيه طلب pending بالفعل
+  if (patient.retreatmentRequest?.status === "pending") {
+    throw ApiError.conflict("A re-treatment request is already pending.");
+  }
+
+  patient.retreatmentRequest = {
+    status: "pending",
+    requestedBy: currentUser._id,
+    requestedAt: new Date(),
+    note: note || "",
+    reviewedBy: null,
+    reviewedAt: null,
+    rejectReason: "",
+  };
+
+  await patient.save();
+  await logActivity(patientId, "Re-treatment requested", currentUser);
+  return patient;
+};
+
+// ── Admin: Accept or reject the application ────────────────────────────────
+export const reviewRetreatment = async (patientId, action, rejectReason, currentUser) => {
+  const patient = await findById({
+    model: Patient, id: patientId, options: { lean: false },
+  });
+  if (!patient) throw ApiError.notFound("Patient not found.");
+
+  if (patient.retreatmentRequest?.status !== "pending") {
+    throw ApiError.badRequest("No pending re-treatment request for this patient.");
+  }
+
+  if (action === "approve") {
+    // انقل للـ Photographic Evaluation Verification
+    patient.retreatmentRequest.status = "approved";
+    patient.retreatmentRequest.reviewedBy = currentUser._id;
+    patient.retreatmentRequest.reviewedAt = new Date();
+
+    patient.currentPhase = phasesEnum.VERIFICA_VALUTAZIONE_FOTOGRAFICA;
+    addPhaseHistory(
+      patient,
+      phasesEnum.VERIFICA_VALUTAZIONE_FOTOGRAFICA,
+      currentUser._id,
+      "Re-treatment approved — restarted from Evaluation Verification"
+    );
+
+    await logActivity(patientId, "Re-treatment approved", currentUser);
+
+  } else {
+    patient.retreatmentRequest.status = "rejected";
+    patient.retreatmentRequest.reviewedBy = currentUser._id;
+    patient.retreatmentRequest.reviewedAt = new Date();
+    patient.retreatmentRequest.rejectReason = rejectReason || "";
+
+    await logActivity(patientId, "Re-treatment rejected", currentUser);
+  }
+
+  await patient.save();
+  return patient;
+};
+
+// ── Admin:Get all pending ────────────────────────
+export const getPendingRetreatments = async () => {
+  return await Patient.find({
+    "retreatmentRequest.status": "pending",
+    isActive: true,
+  })
+    .populate("doctor", "firstName lastName email")
+    .select("firstName lastName currentPhase retreatmentRequest doctor")
+    .sort({ "retreatmentRequest.requestedAt": -1 })
+    .lean();
 };

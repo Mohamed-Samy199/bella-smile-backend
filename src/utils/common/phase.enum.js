@@ -5,6 +5,8 @@ export const phasesEnum = {
     PREPARAZIONE: "Preparation", //4
     VERIFICA_PIANO_CURA: "Check Care Plan", //5
     ATTESA_ACCETTAZIONE: "Waiting for Acceptance", //6
+    STL: "STL",           // ← جديد
+    MANUFACTURING: "Manufacturing",
     COMPLETATO: "Completed", //7
     NON_IDONEO: "Not Suitable",
 }

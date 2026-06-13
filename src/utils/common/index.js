@@ -1,5 +1,4 @@
 export * from './phase.enum.js';
-export * from './treatment.enum.js';
 export * from './eligibility.enum.js';
 export * from './role.enum.js';
 export * from './rowColor.enum.js';

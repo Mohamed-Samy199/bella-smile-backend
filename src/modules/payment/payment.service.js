@@ -1,11 +1,10 @@
-import stripe                from "../../config/stripe.js";
-import Payment               from "../../models/Payment.model.js";
-import Patient               from "../../models/Patient.model.js";
-import Doctor                from "../../models/Doctor.model.js";
-import { ApiError }          from "../../utils/ApiError.js";
-import { phasesEnum }        from "../../utils/common/index.js";
+import stripe from "../../config/stripe.js";
+import Payment from "../../models/Payment.model.js";
+import Patient from "../../models/Patient.model.js";
+import Doctor from "../../models/Doctor.model.js";
+import { ApiError } from "../../utils/ApiError.js";
+import { phasesEnum } from "../../utils/common/index.js";
 import { findById, findOne, create } from "../../db/database.repository.js";
-import { getCurrentPricing } from "../pricing/pricing.service.js";
 import { PAYMENT_CANCEL_PATH, PAYMENT_SUCCESS_PATH } from "../../config/env.config.js";
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -13,17 +12,16 @@ import { PAYMENT_CANCEL_PATH, PAYMENT_SUCCESS_PATH } from "../../config/env.conf
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━═════════════════════════════════
 
 export const createCheckoutSession = async (patientId, currentUser) => {
-
   const doctor = await findOne({
-    model:   Doctor,
-    filter:  { user: currentUser._id },
+    model: Doctor,
+    filter: { user: currentUser._id },
     options: { lean: true },
   });
   if (!doctor) throw ApiError.notFound("Doctor profile not found.");
 
   const patient = await findById({
-    model:   Patient,
-    id:      patientId,
+    model: Patient,
+    id: patientId,
     options: { lean: true },
   });
   if (!patient) throw ApiError.notFound("Patient not found.");
@@ -33,124 +31,122 @@ export const createCheckoutSession = async (patientId, currentUser) => {
   }
 
   if (patient.currentPhase !== phasesEnum.RITIRO) {
-    throw ApiError.badRequest(
-      `Patient must be in "${phasesEnum.RITIRO}" phase.`
-    );
+    throw ApiError.badRequest("Patient must be in Pick Up phase.");
   }
 
-  // ── الدكتور عنده استثناء → يعدي بدون دفع ────────────────
+  // ── Exemption check ───────────────────────────────────────
   if (doctor.paymentExempt) {
-    // مش بنعمل Stripe session — بنحول المريض مباشرة
     const updatedPatient = await Patient.findById(patientId);
     if (!updatedPatient) throw ApiError.notFound("Patient not found.");
 
     updatedPatient.currentPhase = phasesEnum.PREPARAZIONE;
     updatedPatient.phaseHistory.push({
-      phase:     phasesEnum.PREPARAZIONE,
+      phase: phasesEnum.PREPARAZIONE,
       changedBy: doctor._id,
-      notes:     "Payment exemption granted — proceeded without payment.",
+      notes: "Payment exemption — no charge required.",
       changedAt: new Date(),
     });
     await updatedPatient.save();
 
     return {
-      exempted:   true,
+      exempted: true,
       sessionUrl: null,
-      message:    "Proceeded to Preparation (payment exemption).",
+      message: "Proceeded to Preparation (payment exemption).",
     };
   }
 
-  // ── تشيك الـ payment الموجود ──────────────────────────────
-  const existing = await Payment.findOne({
-    patient: patientId,
-    status:  { $in: ["pending", "succeeded"] },
-  });
-
-  if (existing?.status === "succeeded") {
-    if (existing.phaseUnlocked === false) {
-      await Payment.deleteOne({ _id: existing._id });
-    } else {
-      throw ApiError.conflict("Payment already completed for this patient.");
-    }
+  // ── تشيك الـ casePrice ────────────────────────────────────
+  if (!patient.casePrice?.amount || patient.casePrice.amount <= 0) {
+    throw ApiError.badRequest(
+      "Case price has not been set by admin yet. Please contact your administrator."
+    );
   }
 
+  // ── Payment checks ────────────────────────────────────────
+  // بندور بس على الـ active payments (pending أو succeeded + phaseUnlocked)
+  // الـ refunded مش بنتعامل معاهم — دول history بس
+  const existing = await Payment.findOne({
+    patient: patientId,
+    status: { $in: ["pending", "succeeded"] },
+    phaseUnlocked: { $ne: false }, // مش الـ succeeded اللي اتعمله refund
+  });
+
+  // لو succeeded و phaseUnlocked = true → الدفع اتكمل فعلاً ومش محتاج تاني
+  if (existing?.status === "succeeded" && existing?.phaseUnlocked === true) {
+    throw ApiError.conflict("Payment already completed for this patient.");
+  }
+
+  // لو pending → expire الـ session القديم وامسحه
   if (existing?.status === "pending" && existing?.stripeSessionId) {
     try {
       await stripe.checkout.sessions.expire(existing.stripeSessionId);
-    } catch {
-      // ignore
-    }
+    } catch { /* Stripe session ممكن تكون expired بالفعل */ }
     await Payment.deleteOne({ _id: existing._id });
   }
 
-  const numAligners = patient.numAligners;
-  if (!numAligners || numAligners <= 0) {
-    throw ApiError.badRequest("Number of aligners must be set before payment.");
-  }
-
-  const pricing         = await getCurrentPricing();
-  const pricePerAligner = pricing.pricePerAligner;
-  const currency        = pricing.currency;
-  const totalAmount     = numAligners * pricePerAligner;
-  const amountInCents   = Math.round(totalAmount * 100);
+  // ── Build Stripe session ──────────────────────────────────
+  const totalAmount = patient.casePrice.amount;
+  const currency = patient.casePrice.currency || "eur";
+  const amountInCents = Math.round(totalAmount * 100);
 
   if (amountInCents < 50) {
     throw ApiError.badRequest("Payment amount too low.");
   }
 
   const session = await stripe.checkout.sessions.create({
-    mode:                 "payment",
+    mode: "payment",
     currency,
     payment_method_types: ["card"],
     line_items: [
       {
         price_data: {
           currency,
-          unit_amount:  Math.round(pricePerAligner * 100),
+          unit_amount: amountInCents,
           product_data: {
-            name:        "Dental Aligners",
-            description: `${numAligners} aligners for ${patient.firstName} ${patient.lastName}`,
+            name: "Dental Treatment",
+            description: `Case payment for ${patient.firstName} ${patient.lastName}`,
           },
         },
-        quantity: numAligners,
+        quantity: 1,
       },
     ],
     success_url: PAYMENT_SUCCESS_PATH,
-    cancel_url:  PAYMENT_CANCEL_PATH,
+    cancel_url: PAYMENT_CANCEL_PATH,
     metadata: {
       patientId: patientId.toString(),
-      doctorId:  doctor._id.toString(),
+      doctorId: doctor._id.toString(),
     },
     payment_intent_data: {
       metadata: {
         patientId: patientId.toString(),
-        doctorId:  doctor._id.toString(),
+        doctorId: doctor._id.toString(),
       },
     },
     expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
   });
 
+  // ── حفظ الـ Payment record الجديد ────────────────────────
+  // كل دفعة جديدة بتتحفظ كـ record منفصل → history محفوظ دايماً
   await create({
     model: Payment,
     data: {
-      doctor:          doctor._id,
-      patient:         patientId,
+      doctor: doctor._id,
+      patient: patientId,
       stripeSessionId: session.id,
-      amount:          totalAmount,
+      amount: totalAmount,   // ✅ القيمة الحقيقية مش الـ cents
       currency,
-      numAligners,
-      pricePerAligner,
-      status:          "pending",
+      numAligners: (patient.management?.arcataSuperiore + patient.management?.arcataInferiore) || 1,
+      pricePerAligner: totalAmount,
+      status: "pending",
+      phaseUnlocked: false,
     },
   });
 
   return {
-    exempted:        false,
-    sessionUrl:      session.url,
-    sessionId:       session.id,
-    amount:          totalAmount,
-    numAligners,
-    pricePerAligner,
+    exempted: false,
+    sessionUrl: session.url,
+    sessionId: session.id,
+    amount: totalAmount,
     currency,
   };
 };
@@ -224,7 +220,7 @@ const handleSessionCompleted = async (session, eventId) => {
   if (payment.status === "succeeded") return;
 
   // Update Payment
-  payment.status        = "succeeded";
+  payment.status = "succeeded";
   payment.phaseUnlocked = true;
   payment.stripeEventId = eventId;
   await payment.save();
@@ -241,9 +237,9 @@ const handleSessionCompleted = async (session, eventId) => {
   // انقل للـ Preparation
   patient.currentPhase = phasesEnum.PREPARAZIONE;
   patient.phaseHistory.push({
-    phase:     phasesEnum.PREPARAZIONE,
+    phase: phasesEnum.PREPARAZIONE,
     changedBy: payment.doctor,
-    notes:     `Payment confirmed — ${payment.numAligners} aligners — ${payment.currency.toUpperCase()} ${payment.amount}`,
+    notes: `Payment confirmed — ${payment.numAligners} aligners — ${payment.currency.toUpperCase()} ${payment.amount}`,
     changedAt: new Date(),
   });
 
@@ -269,9 +265,9 @@ export const checkSessionStatus = async (sessionId, currentUser) => {
     .lean();
 
   return {
-    sessionStatus:  session.status,
-    paymentStatus:  session.payment_status,
-    paymentRecord:  payment,
+    sessionStatus: session.status,
+    paymentStatus: session.payment_status,
+    paymentRecord: payment,
   };
 };
 
@@ -284,7 +280,7 @@ export const togglePaymentExempt = async (doctorId, exempt, adminId) => {
     doctorId,
     {
       $set: {
-        paymentExempt:          exempt,
+        paymentExempt: exempt,
         paymentExemptGrantedBy: adminId,
         paymentExemptGrantedAt: new Date(),
       },
@@ -297,8 +293,8 @@ export const togglePaymentExempt = async (doctorId, exempt, adminId) => {
 
 export const getMyPayments = async (currentUser) => {
   const doctor = await findOne({
-    model:   Doctor,
-    filter:  { user: currentUser._id },
+    model: Doctor,
+    filter: { user: currentUser._id },
     options: { lean: true },
   });
   if (!doctor) throw ApiError.notFound("Doctor not found.");

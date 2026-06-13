@@ -1,4 +1,4 @@
 export const ProcessingEnum = {
-    SUPERIORE: "superiore",
-    INFERIORE: "inferiore",
+    SUPERIORE: "upper",
+    INFERIORE: "lower",
 };

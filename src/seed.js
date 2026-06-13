@@ -5,7 +5,6 @@ import User   from "./models/User.model.js";
 import Doctor from "./models/Doctor.model.js";
 import AreaManager from "./models/AreaManager.model.js";
 import Distributor from "./models/Distributor.model.js";
-import Pricing from "./models/Pricing.model.js";
 
 
 import dns from "dns";
@@ -125,27 +124,6 @@ const seedDoctor = async (distributor, areaManager) => {
   console.log("   ⚠️  mustChangePassword = true");
 };
 
-// ── Seed Default Pricing ─────────────────────────────────────────────────────
-
-const seedPricing = async (adminId) => {
-  const exists = await Pricing.findOne({ isActive: true });
-  if (exists) {
-    console.log("⚠️  Pricing already exists — skipping.");
-    return;
-  }
-
-  await Pricing.create({
-    pricePerAligner: 50,
-    currency:        "eur",
-    note:            "Initial price",
-    updatedBy:       adminId,
-    isActive:        true,
-  });
-
-  console.log("✅ Default pricing created: €50 per aligner");
-};
-
-
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Run
@@ -159,7 +137,6 @@ const run = async () => {
     const areaManager  = await seedAreaManager();
     const admin = await seedAdmin();
     await seedDoctor(distributor, areaManager);
-    await seedPricing(admin._id);
 
     console.log("\n🎉 Seed completed successfully!");
     console.log("─────────────────────────────────");

@@ -43,7 +43,6 @@ bella-smile-backend/
 │   │   ├── Distributor.model.js
 │   │   ├── Patient.model.js
 │   │   ├── Payment.model.js
-│   │   ├── Pricing.model.js
 │   │   └── StlTransfer.model.js
 │   ├── middlewares/
 │   │   ├── auth.middleware.js     # protect (JWT verify)
@@ -113,7 +112,6 @@ Not Suitable
 
 ### Other Enums
 ```
-treatmentEnum   → F, I, L, M, P, PR, R, LI, EA, null
 eligibilityEnum → Idoneo, Non Idoneo, null
 rowColorEnum    → white, pink, yellow, purple
 roleEnum        → admin, doctor
@@ -163,13 +161,12 @@ statusEnum      → pending, succeeded, failed, refunded
 | firstName, lastName | String | required |
 | nationality | String | |
 | flagUrgent, flagQuestion, flagStar | Boolean | !, ?, * |
-| brux, sconto, priority | Boolean | |
-| numAligners | Number | **single source of truth** |
+| sconto, priority | Boolean | |
 | treatment | Enum | treatmentEnum |
 | currentPhase | Enum | phasesEnum |
 | eligibility | Enum | eligibilityEnum |
 | rowColor | Enum | rowColorEnum |
-| dataPronte, dataAccettazione, dataFaseDue | Date | |
+| dataPronte | Date | |
 | acceptanceDecision | Enum | pending/stl/manufacturing |
 | phaseHistory[] | Embedded | phase, changedBy, notes, changedAt |
 | documents[] | Embedded | fileName, url, publicId, category... |
@@ -282,7 +279,7 @@ Photographic Evaluation
         ↓  verifica-valutazione
 Photographic Evaluation Verification
         ↓  suitability-pickup
-        │  (eligibility + treatment + numAligners + dataPronte)
+        │  (eligibility + treatment + dataPronte)
         ├─ Non Idoneo → Not Suitable (end)
         └─ Idoneo ↓
 Pick Up

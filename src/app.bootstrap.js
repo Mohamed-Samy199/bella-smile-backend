@@ -14,7 +14,6 @@ import patientRoutes from "./modules/patient/patient.routes.js";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 import contactRoutes from "./modules/contact/contact.routes.js";
 import paymentRoutes from "./modules/payment/payment.routes.js";
-import pricingRoutes from "./modules/pricing/pricing.routes.js";
 
 import { ApiError } from "./utils/ApiError.js";
 import { generalLimiter } from "./middlewares/rateLimit.middleware.js";
@@ -105,7 +104,6 @@ app.use("/api/patients",  patientRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/payments", paymentRoutes);
-app.use("/api/pricing", pricingRoutes);
 
 // health check
 app.get("/api/health", (req, res) => {

@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { phasesEnum, treatmentEnum, eligibilityEnum, rowColorEnum, acceptanceDecisionEnum, resourceTypeEnum, categoryEnum, ProcessingEnum, roleEnum } from "../utils/common/index.js";
+import { phasesEnum, eligibilityEnum, rowColorEnum, acceptanceDecisionEnum, resourceTypeEnum, categoryEnum, ProcessingEnum, roleEnum } from "../utils/common/index.js";
 
 // ── Phase History (Embedded) ──────────────────────────────────────────────────
 const phaseHistorySchema = new mongoose.Schema(
@@ -46,19 +46,14 @@ const patientSchema = new mongoose.Schema(
       trim: true,
     },
 
+    descraption: { type: String, trim: true },
+
     // ── Flags (!, ?, *) ───────────────────────────────────────────────────────
     flagUrgent: { type: Boolean, default: false },     // !
     flagQuestion: { type: Boolean, default: false },   // ?
     flagStar: { type: Boolean, default: false },       // *
 
     // ── Treatment Info ────────────────────────────────────────────────────────
-    brux: { type: Boolean, default: false },           // BRUX
-    numAligners: { type: Number, default: 0 },         // Num All.
-    treatment: {
-      type: String,
-      enum: Object.values(treatmentEnum),
-      default: treatmentEnum.null,                                   // Tratt.
-    },
     sconto: { type: Boolean, default: false },         // Sconto
     priority: { type: Boolean, default: false },       // Pr.
     // amount: { type: Number, default: 0 },              // $
@@ -77,10 +72,16 @@ const patientSchema = new mongoose.Schema(
       default: eligibilityEnum.null,
     },
 
+    casePrice: {
+      amount: { type: Number, default: null },  // المبلغ المحدد للحالة
+      currency: { type: String, default: "eur" },
+      setBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      setAt: { type: Date, default: null },
+      note: { type: String, trim: true },
+    },
+
     // ── Dates ─────────────────────────────────────────────────────────────────
     dataPronte: { type: Date, default: null },         // Data Pronto تاريخ جاهزية
-    dataAccettazione: { type: Date, default: null },   // Data Accettazione تاريخ القبول
-    dataFaseDue: { type: Date, default: null },        // Data Fase Due تاريخ المرحلة الثانية
 
     // ── Phase History (embedded) ──────────────────────────────────────────────
     phaseHistory: [phaseHistorySchema],
@@ -161,6 +162,11 @@ const patientSchema = new mongoose.Schema(
         },
       },
     ],
+    previewLink: {
+      type: String,
+      trim: true,
+      default: null,
+    },
 
     // ── Management Tab ────────────────────────────────────────────
     management: {
@@ -174,9 +180,14 @@ const patientSchema = new mongoose.Schema(
       stripping: { type: Boolean, default: false },
       estrazioni: { type: Boolean, default: false },
       noteValutazione: { type: String, trim: true },
-      noteIdoneita: { type: String, trim: true },
+      // noteIdoneita: { type: String, trim: true },
       pianoCura: { type: String, trim: true },
       attachmentTeeth: [{ type: Number }],
+      eligibility: {
+        type: String,
+        enum: Object.values(eligibilityEnum),
+        default: eligibilityEnum.null,
+      },
     },
 
     // ── Processing / Lavorazioni (Admin only) ─────────────────────
@@ -205,16 +216,31 @@ const patientSchema = new mongoose.Schema(
       },
     ],
 
-    // في Patient.model.js — داخل patientSchema
     notes: [
       {
         message: { type: String, required: true, trim: true },
         sentBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
         sentByName: { type: String },
         sentByRole: { type: String, enum: Object.values(roleEnum) },
+        isInternal: { type: Boolean, default: false }, // ← true = admin only
         createdAt: { type: Date, default: Date.now },
       },
     ],
+
+    // Patient.model.js
+    retreatmentRequest: {
+      status: {
+        type: String,
+        enum: ["none", "pending", "approved", "rejected"],
+        default: "none",
+      },
+      requestedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      requestedAt: { type: Date, default: null },
+      note: { type: String, trim: true },
+      reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      reviewedAt: { type: Date, default: null },
+      rejectReason: { type: String, trim: true },
+    },
   },
   { timestamps: true }
 );

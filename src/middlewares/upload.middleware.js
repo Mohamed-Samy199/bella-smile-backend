@@ -17,6 +17,7 @@ const allowedExtensions = [
   ".jpeg",
   ".png",
   ".webp",
+  ".pdf",
 ];
 
 const allowedMimeTypes = [
@@ -30,6 +31,7 @@ const allowedMimeTypes = [
   "image/jpeg",
   "image/png",
   "image/webp",
+  "application/pdf",
 ];
 
 // ─────────────────────────────────────────────
@@ -50,7 +52,7 @@ const fileFilter = (req, file, cb) => {
 
   return cb(
     new Error(
-      "Only JPG, JPEG, PNG and WEBP files are allowed."
+      "Only JPG, JPEG, PNG, WEBP and PDF files are allowed."
     ),
     false
   );

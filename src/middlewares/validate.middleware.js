@@ -14,6 +14,7 @@ const validate = (schema) => (req, res, next) => {
     // const errors = error.details.map((d) => d.message);
     // throw ApiError.badRequest("Validation failed.", errors);
   }));
+console.log(errors);
 
   return next(ApiError.badRequest("Validation failed", errors));
 };
