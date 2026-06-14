@@ -27,7 +27,7 @@ export const createDoctorSchema = Joi.object({
   distributor: Joi.string().hex().length(24).optional().messages({
     "string.length": "Invalid distributor ID",
   }),
-  agency:        Joi.string().max(200).optional(),
+  agency:        Joi.string().max(200).allow("").optional(),
 });
 
 export const updateDoctorSchema = Joi.object({
@@ -39,6 +39,6 @@ export const updateDoctorSchema = Joi.object({
   phone:       Joi.string().max(20).optional(),
   areaManager: Joi.string().hex().length(24).allow(null).optional(),
   distributor: Joi.string().hex().length(24).allow(null).optional(),
-  agency:     Joi.string().max(200).optional(),
+  agency:     Joi.string().max(200).allow("").optional(),
   isActive:    Joi.boolean().optional(),
 });
