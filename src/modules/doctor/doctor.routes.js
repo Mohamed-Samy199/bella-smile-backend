@@ -19,4 +19,19 @@ router.get("/:id",    isAdmin, doctorController.getDoctorById);
 router.put("/:id",    isAdmin, validate(updateDoctorSchema), doctorController.updateDoctor);
 router.delete("/:id", isAdmin, doctorController.deactivateDoctor);
 
+
+router.get(
+  "/:id/overview",
+  isAdmin,
+  doctorController.getDoctorOverview
+);
+
+
+// router.get(
+//   "/:id/overview",
+//   isAdmin,
+//   doctorController.getDoctorOverview
+// );
+
+
 export default router;

@@ -51,3 +51,9 @@ export const deactivateDistributor = asyncHandler(async (req, res) => {
   await distributorService.deactivateDistributor(req.params.id);
   return ApiResponse.ok(res, "Distributor deactivated successfully.");
 });
+
+
+export const getDistributorDashboard = asyncHandler(async (req, res) => {
+  const data = await distributorService.getDistributorDashboard(req.params.id);
+  return ApiResponse.ok(res, "Dashboard fetched.", data);
+});

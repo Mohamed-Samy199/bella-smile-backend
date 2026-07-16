@@ -13,10 +13,11 @@ const router = Router();
 // كل الـ routes تحتاج login + admin
 router.use(protect, isAdmin);
 
-router.post("/",     validate(createAreaManagerSchema), areaManagerController.createAreaManager);
-router.get("/",      areaManagerController.getAllAreaManagers);
-router.get("/:id",   areaManagerController.getAreaManagerById);
-router.put("/:id",   validate(updateAreaManagerSchema), areaManagerController.updateAreaManager);
-router.delete("/:id",areaManagerController.deactivateAreaManager);
+router.post("/",             validate(createAreaManagerSchema), areaManagerController.createAreaManager);
+router.get("/",              areaManagerController.getAllAreaManagers);
+router.get("/:id",           areaManagerController.getAreaManagerById);
+router.get("/:id/dashboard", areaManagerController.getAreaManagerDashboard);
+router.put("/:id",           validate(updateAreaManagerSchema), areaManagerController.updateAreaManager);
+router.delete("/:id",        areaManagerController.deactivateAreaManager);
 
 export default router;

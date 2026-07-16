@@ -3,6 +3,7 @@ import Doctor from "../../models/Doctor.model.js";
 import User from "../../models/User.model.js";
 import AreaManager from "../../models/AreaManager.model.js";
 import Distributor from "../../models/Distributor.model.js";
+import Patient from "../../models/Patient.model.js";
 import {
   findById,
   findOne,
@@ -134,6 +135,50 @@ export const getDoctorById = async (id) => {
   });
   if (!doctor) throw ApiError.notFound("Doctor not found.");
   return doctor;
+};
+
+// ── Get Doctor Overview ─────────────────────────────────────────────────────
+
+export const getDoctorOverview = async (doctorId) => {
+  const doctor = await Doctor.findById(doctorId).lean();
+  if (!doctor) throw ApiError.notFound("Doctor not found.");
+
+  const patients = await Patient.find({
+    doctor:   doctorId,
+    isActive: true,
+  }).lean();
+
+  const activePatients = patients.filter(
+    (p) => p.currentPhase !== "Completed" &&
+           p.currentPhase !== "Not Suitable"
+  );
+
+  // أحدث مريض active
+  const featured = activePatients.sort(
+    (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
+  )[0] || null;
+
+  return {
+    doctor: {
+      _id:       doctor._id,
+      firstName: doctor.firstName,
+      lastName:  doctor.lastName,
+      email:     doctor.email,
+      city:      doctor.city,
+      agency:    doctor.agency,
+      paymentExempt: doctor.paymentExempt,
+    },
+    stats: {
+      totalPatients:   patients.length,
+      activePatients:  activePatients.length,
+      completedCases:  patients.filter(p => p.currentPhase === "Completed").length,
+      pendingPayment:  activePatients.filter(p =>
+        p.currentPhase === "Pick Up" && p.casePrice?.amount
+      ).length,
+    },
+    featured,
+    patients,
+  };
 };
 
 // ── Get By UserId ─────────────────────────────────────────────────────────────

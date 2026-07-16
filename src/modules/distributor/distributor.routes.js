@@ -18,4 +18,6 @@ router.get("/:id",    distributorController.getDistributorById);
 router.put("/:id",    validate(updateDistributorSchema), distributorController.updateDistributor);
 router.delete("/:id", distributorController.deactivateDistributor);
 
+router.get("/:id/dashboard", distributorController.getDistributorDashboard);
+
 export default router;

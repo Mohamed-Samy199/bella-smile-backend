@@ -44,6 +44,15 @@ export const getDoctorById = asyncHandler(async (req, res) => {
 });
 
 /**
+ * GET /api/doctors/:id/overview
+ * Admin only
+ */
+export const getDoctorOverview = asyncHandler(async (req, res) => {
+    const data = await doctorService.getDoctorOverview(req.params.id);
+    return ApiResponse.ok(res, "Doctor overview fetched.", data);
+  });
+
+/**
  * PUT /api/doctors/:id
  * Admin only
  */

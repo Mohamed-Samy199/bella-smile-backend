@@ -7,6 +7,10 @@ import {
   findByIdAndUpdate,
   paginate,
 } from "../../db/database.repository.js";
+import Doctor from "../../models/Doctor.model.js";
+import Patient from "../../models/Patient.model.js";
+import AreaManager from "../../models/AreaManager.model.js";
+import Payment from "../../models/Payment.model.js";
 
 // ── Create ────────────────────────────────────────────────────────────────────
 
@@ -93,4 +97,111 @@ export const deactivateDistributor = async (id) => {
   });
   if (!distributor) throw ApiError.notFound("Distributor not found.");
   return distributor;
+};
+
+
+
+
+// GET /api/distributors/:id/dashboard
+
+
+export const getDistributorDashboard = async (distributorId) => {
+
+  const distributor = await Distributor.findById(distributorId).lean();
+  if (!distributor) throw ApiError.notFound("Distributor not found.");
+
+  const doctors = await Doctor.find({ distributor: distributorId })
+    .lean();
+
+  const doctorIds = doctors.map((d) => d._id);
+
+  const patients = await Patient.find({
+    doctor:   { $in: doctorIds },
+    isActive: true,
+  })
+    .populate("doctor", "firstName lastName")
+    .lean();
+
+  const activePatients = patients.filter(
+    (p) => p.currentPhase !== "Completed" &&
+           p.currentPhase !== "Not Suitable"
+  );
+
+  const areaManagers = await AreaManager.find({ isActive: true }).lean();
+
+  const repStats = areaManagers.map((am) => {
+    const amDoctors = doctors.filter(
+      (d) => d.areaManager?.toString() === am._id.toString()
+    );
+    const amDocIds  = new Set(amDoctors.map((d) => d._id.toString()));
+    const amCases   = activePatients.filter((p) =>
+      amDocIds.has(p.doctor?._id?.toString())
+    );
+
+    const name = am.firstName && am.lastName
+      ? `${am.firstName} ${am.lastName}`
+      : am.email || "—";
+
+    return {
+      _id:             am._id,
+      name,
+      doctorsCount:    amDoctors.length,
+      casesInProgress: amCases.length,
+    };
+  });
+
+  // ── جيب كل المدفوعات الناجحة (مش بس هذا الشهر) للـ Recent Billing ──
+  const allPayments = await Payment.find({
+    doctor: { $in: doctorIds },
+    status: "succeeded",
+  })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const now        = new Date();
+  const startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const billedThisMonth = allPayments
+    .filter((p) => p.createdAt >= startMonth)
+    .reduce((sum, p) => sum + (p.amount || 0), 0);
+
+  // ── تجميع المدفوعات بالشهر عشان recentBilling ──
+  const billingByPeriod = {};
+  for (const p of allPayments) {
+    const d      = new Date(p.createdAt);
+    const period = d.toLocaleString("en-US", { month: "long", year: "numeric" }); // مثال: "July 2026"
+    if (!billingByPeriod[period]) {
+      billingByPeriod[period] = { period, amount: 0, status: "Paid" };
+    }
+    billingByPeriod[period].amount += p.amount || 0;
+  }
+
+  const recentBilling = Object.values(billingByPeriod)
+    .sort((a, b) => new Date(b.period) - new Date(a.period))
+    .slice(0, 6); // آخر 6 شهور مثلاً
+
+  const distributorName =
+    distributor.companyName ||
+    (distributor.firstName && distributor.lastName
+      ? `${distributor.firstName} ${distributor.lastName}`
+      : distributor.email || "Distributor");
+
+  return {
+    distributor: { name: distributorName },
+    stats: {
+      representatives: areaManagers.length,
+      activeDoctors:   doctors.length,
+      casesInProgress: activePatients.length,
+      billedThisMonth,
+    },
+    representatives: repStats,
+    recentBilling,   // ← دلوقتي بيانات حقيقية بدل []
+    patients: activePatients.map((p) => ({
+      _id:          p._id,
+      firstName:    p.firstName,
+      lastName:     p.lastName,
+      currentPhase: p.currentPhase,
+      doctor:       p.doctor,
+    })),
+  };
 };

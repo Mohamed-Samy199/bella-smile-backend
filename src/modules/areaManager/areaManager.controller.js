@@ -35,6 +35,15 @@ export const getAreaManagerById = asyncHandler(async (req, res) => {
 });
 
 /**
+ * GET /api/area-managers/:id/dashboard
+ * Admin only
+ */
+export const getAreaManagerDashboard = asyncHandler(async (req, res) => {
+  const data = await areaManagerService.getAreaManagerDashboard(req.params.id);
+  return ApiResponse.ok(res, "Dashboard fetched.", data);
+});
+
+/**
  * PUT /api/area-managers/:id
  * Admin only
  */
