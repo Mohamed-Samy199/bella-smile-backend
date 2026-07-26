@@ -26,8 +26,6 @@ const generateToken = (userId) => {
 export const registerDoctor = async (data) => {
   const { name, email, password, firstName, lastName,
           phone, city, agency } = data;
-console.log("==============>",name, email, password, firstName, lastName,
-          phone, city, agency );
 
   // تشيك إن الـ email مش موجود
   const existingUser = await User.findOne({ email });

@@ -26,7 +26,7 @@ const errorMiddleware = (err, req, res, next) => {
       field: e.path,
       message: e.message,
     }));
-    error = ApiError.badRequest("Validation failed", errors);
+    error = ApiError.badRequest("Validation failed333", errors);
   }
 
   // ── Fallback for unexpected errors ────────────────────
