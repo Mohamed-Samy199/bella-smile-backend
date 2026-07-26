@@ -2,6 +2,8 @@ import jwt from "jsonwebtoken";
 import { JWT_SECRET, JWT_EXPIRES_IN } from "../../config/env.config.js";
 import { ApiError } from "../../utils/ApiError.js";
 import User from "../../models/User.model.js";
+import Doctor from "../../models/Doctor.model.js";
+import bcrypt from "bcryptjs";
 import {
   findOne,
   findById,
@@ -17,6 +19,59 @@ const generateToken = (userId) => {
   return jwt.sign({ id: userId }, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN || "7d",
   });
+};
+
+
+
+export const registerDoctor = async (data) => {
+  const { name, email, password, firstName, lastName,
+          phone, city, agency } = data;
+console.log("==============>",name, email, password, firstName, lastName,
+          phone, city, agency );
+
+  // تشيك إن الـ email مش موجود
+  const existingUser = await User.findOne({ email });
+  if (existingUser) {
+    throw ApiError.conflict("Email already in use.");
+  }
+
+  // انشئ الـ User
+  const hashedPassword = await bcrypt.hash(password, 12);
+  const user = await User.create({
+    name,
+    email,
+    password:         hashedPassword,
+    role:             "doctor",
+    mustChangePassword: false,
+  });
+
+  // انشئ الـ Doctor profile مرتبط بالـ User
+  const doctor = await Doctor.create({
+    user:      user._id,
+    firstName,
+    lastName,
+    email,
+    phone:     phone  || "",
+    city:      city   || "",
+    agency:    agency || "",
+  });
+
+  // جيب الـ token
+  const token = jwt.sign(
+    { id: user._id, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+  );
+
+  return {
+    token,
+    user: {
+      _id:   user._id,
+      name:  user.name,
+      email: user.email,
+      role:  user.role,
+    },
+  };
 };
 
 // ── Service Methods ───────────────────────────────────────────────────────────
@@ -100,6 +155,7 @@ export const changePassword = async (userId, { currentPassword, newPassword }) =
 
   return { token };
 };import crypto        from "crypto";
+import { log } from "console";
 
 
 // ── Forgot Password ───────────────────────────────────────────

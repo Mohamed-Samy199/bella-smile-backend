@@ -26,7 +26,14 @@ router.patch("/change-password", protect, validate(changePasswordSchema), authCo
 
 // ── Admin Only ────────────────────────────────────────────────────────────────
 // router.post("/register", protect, isAdmin, validate(registerSchema), authController.register);
-router.post("/register", validate(registerSchema), authController.register);
+// router.post("/register", validate(registerSchema), authController.register);
 router.patch("/users/:userId/role", protect, isAdmin, validate(changeRoleSchema), authController.changeUserRole);
+
+// ── A ────────────────────────────────────────────────────────────────
+router.post(
+  "/register",
+  validate(registerSchema),
+  authController.register
+);
 
 export default router;

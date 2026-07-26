@@ -6,11 +6,15 @@ import { ApiResponse } from "../../utils/ApiResponse.js";
  * POST /api/auth/register
  * Admin only
  */
+// export const register = asyncHandler(async (req, res) => {
+//   const { name, email, password, role } = req.body;
+//   const { user, token } = await authService.register({ name, email, password, role });
+//   return ApiResponse.created(res, "Account created successfully.", { user, token });
+// });
 export const register = asyncHandler(async (req, res) => {
-  const { name, email, password, role } = req.body;
-  const { user, token } = await authService.register({ name, email, password, role });
-  return ApiResponse.created(res, "Account created successfully.", { user, token });
-});
+  const result = await authService.registerDoctor(req.body);
+  return ApiResponse.created(res, "Account created successfully.", result);
+})
 
 /**
  * POST /api/auth/login
