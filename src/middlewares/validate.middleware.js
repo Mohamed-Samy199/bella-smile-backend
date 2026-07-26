@@ -16,7 +16,7 @@ const validate = (schema) => (req, res, next) => {
   }));
 console.log(errors);
 
-  return next(ApiError.badRequest("Validation failed", errors));
+  return next(ApiError.badRequest("Validation failed556666", errors));
 };
 
 export default validate;
