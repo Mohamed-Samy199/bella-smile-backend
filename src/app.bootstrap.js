@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import mongoSanitize from "express-mongo-sanitize";
+import compression from "compression";
 import xss           from "xss";
 
 import errorMiddleware from "./middlewares/error.middleware.js";
@@ -85,7 +86,7 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(mongoSanitize());
 
 // Compression
-// app.use(compression());
+app.use(compression());
 
 app.use("/api", generalLimiter); // Apply general rate limiter to all API routes
 
@@ -99,7 +100,6 @@ app.use("/api/auth",      authRoutes);
 app.use("/api/area-managers", areaManagerRoutes);
 app.use("/api/distributors",  distributorRoutes);
 app.use("/api/doctors",  doctorRoutes);
-app.use("/api/patients",  patientRoutes);
 app.use("/api/patients",  patientRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/contact", contactRoutes);

@@ -33,7 +33,7 @@ router.patch("/users/:userId/role", protect, isAdmin, validate(changeRoleSchema)
 router.post(
   "/register",
   validate(registerSchema),
-  authController.register
+  authController.registerDoctor
 );
 
 export default router;

@@ -11,7 +11,7 @@ import { ApiResponse } from "../../utils/ApiResponse.js";
 //   const { user, token } = await authService.register({ name, email, password, role });
 //   return ApiResponse.created(res, "Account created successfully.", { user, token });
 // });
-export const register = asyncHandler(async (req, res) => {
+export const registerDoctor = asyncHandler(async (req, res) => {
   const result = await authService.registerDoctor(req.body);
   return ApiResponse.created(res, "Account created successfully.", result);
 })
