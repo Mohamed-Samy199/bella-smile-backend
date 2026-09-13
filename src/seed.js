@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
-import bcrypt   from "bcryptjs";
-import { MONGODB_URI } from "./config/env.config.js";
-import User   from "./models/User.model.js";
+import { ADMIN_NAME, ADMIN_EMAIL, ADMIN_PASSWORD, MONGODB_URI } from "./config/env.config.js";
+import User from "./models/User.model.js";
 import Doctor from "./models/Doctor.model.js";
 import AreaManager from "./models/AreaManager.model.js";
 import Distributor from "./models/Distributor.model.js";
@@ -20,7 +19,7 @@ const connect = async () => {
 // ── Seed Admin ────────────────────────────────────────────────────────────────
 
 const seedAdmin = async () => {
-  const email = "admin@bellasmile.com";
+  const email = ADMIN_EMAIL;
 
   const exists = await User.findOne({ email });
   if (exists) {
@@ -29,16 +28,16 @@ const seedAdmin = async () => {
   }
 
   const admin = await User.create({
-    name:     "Super Admin",
-    email,
-    password: "Admin@12345",          // هيتهاش بالـ pre-save hook
-    role:     "admin",
+    name: ADMIN_NAME,
+    email: ADMIN_EMAIL,
+    password: ADMIN_PASSWORD,
+    role: "admin",
     isActive: true,
   });
 
   console.log("✅ Admin created:");
   console.log("   Email   :", email);
-  console.log("   Password: Admin@12345");
+  console.log("   Password: " + ADMIN_PASSWORD);
   console.log("   ⚠️  Change the password after first login!");
 
   return admin;
@@ -55,9 +54,9 @@ const seedDistributor = async () => {
 
   const distributor = await Distributor.create({
     companyName: "Smilepharm Milano",
-    address:     "Via Roma, 1 - Milano",
-    email:       "smilepharm@milano.it",
-    phone:       "02 12345678",
+    address: "Via Roma, 1 - Milano",
+    email: "smilepharm@milano.it",
+    phone: "02 12345678",
   });
 
   console.log("✅ Sample distributor created:", distributor.companyName);
@@ -75,10 +74,10 @@ const seedAreaManager = async () => {
 
   const areaManager = await AreaManager.create({
     firstName: "Marco",
-    lastName:  "Rossi",
-    city:      "Milano",
-    email:     "manager@bellasmile.com",
-    phone:     "333 1234567",
+    lastName: "Rossi",
+    city: "Milano",
+    email: "manager@bellasmile.com",
+    phone: "333 1234567",
   });
 
   console.log("✅ Sample area manager created:", `${areaManager.firstName} ${areaManager.lastName}`);
@@ -97,22 +96,22 @@ const seedDoctor = async (distributor, areaManager) => {
   }
 
   const user = await User.create({
-    name:                `Luca Bianchi`,
+    name: `Luca Bianchi`,
     email,
-    password:            "Doctor@12345",
-    role:                "doctor",
-    mustChangePassword:  true,
-    isActive:            true,
+    password: "Doctor@12345",
+    role: "doctor",
+    mustChangePassword: true,
+    isActive: true,
   });
 
   await Doctor.create({
-    user:        user._id,
-    firstName:   "Luca",
-    lastName:    "Bianchi",
-    address:     "Via Dante, 5",
-    city:        "Roma",
+    user: user._id,
+    firstName: "Luca",
+    lastName: "Bianchi",
+    address: "Via Dante, 5",
+    city: "Roma",
     email,
-    phone:       "06 98765432",
+    phone: "06 98765432",
     areaManager: areaManager._id,
     distributor: distributor._id,
     agency: "Smile"
@@ -133,14 +132,14 @@ const run = async () => {
   try {
     await connect();
 
-    const distributor  = await seedDistributor();
-    const areaManager  = await seedAreaManager();
+    const distributor = await seedDistributor();
+    const areaManager = await seedAreaManager();
     const admin = await seedAdmin();
     await seedDoctor(distributor, areaManager);
 
     console.log("\n🎉 Seed completed successfully!");
     console.log("─────────────────────────────────");
-    console.log("Admin  → admin@bellasmile.com  / Admin@12345");
+    console.log(`Admin  → ${ADMIN_EMAIL}  / ${ADMIN_PASSWORD}`);
     console.log("Doctor → doctor@bellasmile.com / Doctor@12345");
     console.log("─────────────────────────────────");
 
