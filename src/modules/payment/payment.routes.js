@@ -1,6 +1,6 @@
 import { Router }    from "express";
 import express       from "express";
-import rateLimit     from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import * as pc       from "./payment.controller.js";
 import { protect }   from "../../middlewares/auth.middleware.js";
 import { isAdmin, isAdminOrDoctor } from "../../middlewares/role.middleware.js";
@@ -12,7 +12,8 @@ import { paymentLimiter } from "../../middlewares/rateLimit.middleware.js";
 const sessionLimiter = rateLimit({
   windowMs:     15 * 60 * 1000,
   max:          10,
-  keyGenerator: (req) => req.user?._id?.toString() || req.ip,
+  keyGenerator: (req) =>
+  req.user?._id?.toString() || ipKeyGenerator(req.ip),
   message: {
     success: false,
     message: "Too many payment attempts. Try again later.",
