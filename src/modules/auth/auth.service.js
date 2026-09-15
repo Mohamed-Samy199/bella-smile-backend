@@ -11,7 +11,7 @@ import {
   findOneAndUpdate,
 } from "../../db/database.repository.js";
 import { transporter } from "../../utils/mailer.js";
-import { CLIENT_URL }  from "../../config/env.config.js";
+import { CLIENT_URL } from "../../config/env.config.js";
 
 // ── Token Generator ───────────────────────────────────────────────────────────
 
@@ -24,50 +24,55 @@ const generateToken = (userId) => {
 
 
 export const registerDoctor = async (data) => {
-  const { name, email, password, firstName, lastName,
-          phone, city, agency } = data;
+  const {
+    name,
+    email,
+    password,
+    firstName,
+    lastName,
+    phone,
+    city,
+    agency,
+  } = data;
 
-  // تشيك إن الـ email مش موجود
+  // Check if email already exists
   const existingUser = await User.findOne({ email });
+
   if (existingUser) {
     throw ApiError.conflict("Email already in use.");
   }
 
-  // انشئ الـ User
-  const hashedPassword = await bcrypt.hash(password, 12);
+  // Create User
+  // Password hashing is handled by User model pre-save hook
   const user = await User.create({
     name,
     email,
-    password:         hashedPassword,
-    role:             "doctor",
+    password,
+    role: "doctor",
     mustChangePassword: false,
   });
 
-  // انشئ الـ Doctor profile مرتبط بالـ User
-  const doctor = await Doctor.create({
-    user:      user._id,
+  // Create Doctor profile
+  await Doctor.create({
+    user: user._id,
     firstName,
     lastName,
     email,
-    phone:     phone  || "",
-    city:      city   || "",
-    agency:    agency || "",
+    phone: phone || "",
+    city: city || "",
+    agency: agency || "",
   });
 
-  // جيب الـ token
-  const token = jwt.sign(
-    { id: user._id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
-  );
+  // Generate token
+  const token = generateToken(user._id);
 
   return {
     token,
     user: {
-      _id:   user._id,
-      name:  user.name,
+      _id: user._id,
+      name: user.name,
       email: user.email,
-      role:  user.role,
+      role: user.role,
     },
   };
 };
@@ -102,11 +107,11 @@ export const login = async ({ email, password }) => {
     select: "+password",
     options: { lean: false }, // محتاج instance عشان comparePassword
   });
-  
+
   if (!user || !user.isActive) {
     throw ApiError.unauthorized("Invalid email or password.");
   }
-  
+
   // 2) verify password
   const isMatch = await user.comparePassword(password);
   if (!isMatch) throw ApiError.unauthorized("Invalid email or password.");
@@ -152,15 +157,15 @@ export const changePassword = async (userId, { currentPassword, newPassword }) =
   const token = generateToken(user._id);
 
   return { token };
-};import crypto        from "crypto";
+}; import crypto from "crypto";
 import { log } from "console";
 
 
 // ── Forgot Password ───────────────────────────────────────────
 export const forgotPassword = async (email) => {
   const user = await findOne({
-    model:   User,
-    filter:  { email, isActive: true },
+    model: User,
+    filter: { email, isActive: true },
     options: { lean: false },
   });
 
@@ -168,13 +173,13 @@ export const forgotPassword = async (email) => {
   if (!user) return;
 
   // Generate token
-  const resetToken  = crypto.randomBytes(32).toString("hex");
+  const resetToken = crypto.randomBytes(32).toString("hex");
   const tokenHashed = crypto
     .createHash("sha256")
     .update(resetToken)
     .digest("hex");
 
-  user.passwordResetToken   = tokenHashed;
+  user.passwordResetToken = tokenHashed;
   user.passwordResetExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 دقيقة
   await user.save({ validateBeforeSave: false });
 
@@ -182,8 +187,8 @@ export const forgotPassword = async (email) => {
   const resetUrl = `${CLIENT_URL}/reset-password/${resetToken}`;
 
   await transporter.sendMail({
-    from:    `"Bella Smile" <${process.env.EMAIL_USER}>`,
-    to:      user.email,
+    from: `"Bella Smile" <${process.env.EMAIL_USER}>`,
+    to: user.email,
     subject: "Password Reset Request",
     html: `
       <div style="font-family:sans-serif;max-width:500px;margin:auto">
@@ -213,20 +218,20 @@ export const resetPassword = async (token, newPassword) => {
     .digest("hex");
 
   const user = await findOne({
-    model:  User,
+    model: User,
     filter: {
-      passwordResetToken:   tokenHashed,
+      passwordResetToken: tokenHashed,
       passwordResetExpires: { $gt: new Date() },
-      isActive:             true,
+      isActive: true,
     },
-    select:  "+passwordResetToken +passwordResetExpires",
+    select: "+passwordResetToken +passwordResetExpires",
     options: { lean: false },
   });
 
   if (!user) throw ApiError.badRequest("Invalid or expired reset token.");
 
-  user.password             = newPassword;
-  user.passwordResetToken   = undefined;
+  user.password = newPassword;
+  user.passwordResetToken = undefined;
   user.passwordResetExpires = undefined;
   await user.save();
 
@@ -245,8 +250,8 @@ export const changeUserRole = async (targetUserId, newRole, adminId) => {
   }
 
   const user = await findById({
-    model:   User,
-    id:      targetUserId,
+    model: User,
+    id: targetUserId,
     options: { lean: false },
   });
   if (!user) throw ApiError.notFound("User not found.");
@@ -256,8 +261,8 @@ export const changeUserRole = async (targetUserId, newRole, adminId) => {
     throw ApiError.badRequest(`User already has role: ${newRole}`);
   }
 
-  const oldRole  = user.role;
-  user.role      = newRole;
+  const oldRole = user.role;
+  user.role = newRole;
   await user.save();
 
   return { user: user.toSafeObject(), oldRole, newRole };
