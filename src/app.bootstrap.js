@@ -61,6 +61,7 @@ const sanitizeObject = (obj) => {
 const ALLOWED_ORIGINS = [
   process.env.CLIENT_URL,           // https://bella-smile.vercel.app
   "https://bellasmille.com",
+  "https://www.bellasmille.com",  
   "http://localhost:5173",
   "http://localhost:3000",
 ].filter(Boolean);
