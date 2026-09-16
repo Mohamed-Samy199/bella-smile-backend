@@ -294,6 +294,21 @@ export const photographicEvaluation = (id, body, user) =>
 export const suitabilityAndPickUp = async (id, body, user) => {
   const { eligibility, notes, dataPronte } = body;
 
+  if (user.role === "doctor") {
+    const patient = await findById({
+      model: Patient,
+      id,
+      options: { lean: true },
+    });
+    if (!patient) throw ApiError.notFound("Patient not found.");
+
+    if (!patient.casePrice?.amount) {
+      throw ApiError.forbidden(
+        "Please contact the administrator to get the case price before proceeding."
+      );
+    }
+  }
+
   return transitionPhase(id, {
     fromPhase: phasesEnum.VERIFICA_VALUTAZIONE_FOTOGRAFICA,
     toPhase: phasesEnum.RITIRO,
@@ -559,6 +574,17 @@ export const updateManagement = async (patientId, data, currentUser) => {
     ...managementFields
   } = data;
 
+  const previousPatient = await findById({
+    model: Patient,
+    id: patientId,
+    options: { lean: true },
+  });
+  if (!previousPatient) throw ApiError.notFound("Patient not found.");
+
+  const returningFromNotSuitable =
+    eligibility === eligibilityEnum.IDONEO &&
+    previousPatient.currentPhase === phasesEnum.NON_IDONEO;
+
   const sup = Number(arcataSuperiore ?? 0);
   const inf = Number(arcataInferiore ?? 0);
   const total = sup + inf;
@@ -584,6 +610,10 @@ export const updateManagement = async (patientId, data, currentUser) => {
     ) {
       setFields["currentPhase"] = phasesEnum.NON_IDONEO;
     }
+
+    if (returningFromNotSuitable) {
+      setFields["currentPhase"] = phasesEnum.VALUTAZIONE_FOTOGRAFICA;
+    }
   }
 
   // ── findByIdAndUpdate بدل Object.assign + save ───────────
@@ -604,6 +634,16 @@ export const updateManagement = async (patientId, data, currentUser) => {
       phase: phasesEnum.NON_IDONEO,
       changedBy: currentUser._id,
       notes: "Eligibility set to Not Suitable via Management",
+      changedAt: new Date(),
+    });
+    await patient.save();
+  }
+
+  if (returningFromNotSuitable) {
+    patient.phaseHistory.push({
+      phase: phasesEnum.VALUTAZIONE_FOTOGRAFICA,
+      changedBy: currentUser._id,
+      notes: "Eligibility changed from Not Suitable to Suitable",
       changedAt: new Date(),
     });
     await patient.save();

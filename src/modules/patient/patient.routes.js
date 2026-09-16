@@ -42,7 +42,7 @@ router.patch("/:id/case-price", isAdmin, validate(setCasePriceSchema), pc.setCas
 // ── Workflow ──────────────────────────────────────────────────
 router.post("/:id/verifica-valutazione", isAdminOrDoctor, validate(workflowSchema), pc.photographicEvaluation);
 router.post("/:id/suitability-pickup", isAdminOrDoctor, validate(suitabilityPickUpSchema), pc.suitabilityAndPickUp);
-router.post("/:id/Preparation", isAdminOrDoctor, validate(workflowSchema), pc.preparation);
+router.post("/:id/Preparation", isAdmin, validate(workflowSchema), pc.preparation);
 router.post("/:id/check-care-plan", isAdminOrDoctor, validate(workflowSchema), pc.verificaPianoCura);
 router.post("/:id/waiting-for-acceptance", isAdminOrDoctor, validate(workflowSchema), pc.attesaAccettazione);
 router.post("/:id/complete-stl", isAdmin, validate(workflowSchema), pc.completaFromStl);
