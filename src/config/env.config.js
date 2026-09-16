@@ -4,8 +4,13 @@ import dotenv from 'dotenv';
 //   path: './src/config/.env'
 // });
 
+// dotenv.config({
+//   path: './src/config/.env.production'
+// });
+
+// Production
 dotenv.config({
-  path: './src/config/.env.production'
+  path: "./.env",
 });
 
 const required = [
