@@ -14,19 +14,12 @@ import doctorRoutes from "./modules/doctor/doctor.routes.js";
 import patientRoutes from "./modules/patient/patient.routes.js";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 import contactRoutes from "./modules/contact/contact.routes.js";
-import paymentRoutes from "./modules/payment/payment.routes.js";
 
 import { ApiError } from "./utils/ApiError.js";
 import { generalLimiter } from "./middlewares/rateLimit.middleware.js";
 
 const app = express();
 
-// ── Stripe Webhook — raw body لازم يكون قبل json() ──────
-  app.use(
-    "/api/payments/webhook",
-    express.raw({ type: "application/json" })
-);
-  
 // ── Security & Parsing Middlewares ────────────────────────────────────────────
 app.set("trust proxy", 1);
 app.use(helmet());
@@ -61,7 +54,7 @@ const sanitizeObject = (obj) => {
 const ALLOWED_ORIGINS = [
   process.env.CLIENT_URL,           // https://bella-smile.vercel.app
   "https://bellasmille.com",
-  "https://www.bellasmille.com",  
+  "https://www.bellasmille.com", 
   "http://localhost:5173",
   "http://localhost:3000",
 ].filter(Boolean);
@@ -105,7 +98,6 @@ app.use("/api/doctors",  doctorRoutes);
 app.use("/api/patients",  patientRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/contact", contactRoutes);
-app.use("/api/payments", paymentRoutes);
 
 // health check
 app.get("/api/health", (req, res) => {

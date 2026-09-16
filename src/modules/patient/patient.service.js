@@ -5,7 +5,6 @@ import {
   findById, findOne, create, findByIdAndUpdate, paginate,
 } from "../../db/database.repository.js";
 import { phasesEnum, eligibilityEnum } from "../../utils/common/index.js";
-import Payment from "../../models/Payment.model.js";
 import cloudinary from "../../config/cloudinary.js";
 import { uploadToCloudinary } from "../../utils/cloudinary.js";
 
@@ -274,35 +273,9 @@ export const changePhase = async (id, { phase, notes }, currentUser) => {
   });
   if (!patient) throw ApiError.notFound("Patient not found.");
 
-  const previousPhase = patient.currentPhase;
   patient.currentPhase = phase;
   addPhaseHistory(patient, phase, currentUser._id, notes);
   await patient.save();
-
-  // ── لو الـ Admin رجّع المريض لقبل Pick Up → reset الـ payment ──
-  const PHASES_ORDER = [
-    phasesEnum.VALUTAZIONE_FOTOGRAFICA,
-    phasesEnum.VERIFICA_VALUTAZIONE_FOTOGRAFICA,
-    phasesEnum.IDONEITA_FOTOGRAFICA,
-    phasesEnum.RITIRO,
-    phasesEnum.PREPARAZIONE,
-    phasesEnum.VERIFICA_PIANO_CURA,
-    phasesEnum.ATTESA_ACCETTAZIONE,
-    phasesEnum.COMPLETATO,
-  ];
-
-  const previousIndex = PHASES_ORDER.indexOf(previousPhase);
-  const newIndex = PHASES_ORDER.indexOf(phase);
-
-  // لو رجع لمرحلة قبل Pick Up → امسح الـ payments
-  const pickUpIndex = PHASES_ORDER.indexOf(phasesEnum.RITIRO);
-  if (newIndex < pickUpIndex && previousIndex >= pickUpIndex) {
-    await Payment.updateMany(
-      { patient: id, status: { $in: ["pending", "succeeded"] } },
-      { $set: { status: "refunded", phaseUnlocked: false } }
-    );
-    console.log(`🔄 Payment reset for patient ${id} — moved back before Pick Up`);
-  }
 
   return patient;
 };
@@ -321,20 +294,6 @@ export const photographicEvaluation = (id, body, user) =>
 export const suitabilityAndPickUp = async (id, body, user) => {
   const { eligibility, notes, dataPronte } = body;
 
-  // ── تشيك إن الأدمن حط السعر الأول ──────────────────────────
-  const patient = await findById({
-    model: Patient,
-    id,
-    options: { lean: true },
-  });
-  if (!patient) throw ApiError.notFound("Patient not found.");
-
-  if (!patient.casePrice?.amount) {
-    throw ApiError.badRequest(
-      "Case price must be set by admin before proceeding to suitability."
-    );
-  }
-
   return transitionPhase(id, {
     fromPhase: phasesEnum.VERIFICA_VALUTAZIONE_FOTOGRAFICA,
     toPhase: phasesEnum.RITIRO,
@@ -344,51 +303,10 @@ export const suitabilityAndPickUp = async (id, body, user) => {
 };
 
 export const preparation = async (id, body, currentUser) => {
-
-  // لو Admin → مش محتاج دفع
-  if (currentUser.role === "admin") {
-    return transitionPhase(id, {
-      fromPhase: phasesEnum.RITIRO,
-      toPhase: phasesEnum.PREPARAZIONE,
-      notes: body.notes,
-    }, currentUser);
-  }
-
-  // لو Doctor → تشيك الدفع
-  const doctor = await findOne({
-    model: Doctor,
-    filter: { user: currentUser._id },
-    options: { lean: true },
-  });
-
-  // لو عنده استثناء → يعدي عادي
-  if (doctor?.paymentExempt) {
-    return transitionPhase(id, {
-      fromPhase: phasesEnum.RITIRO,
-      toPhase: phasesEnum.PREPARAZIONE,
-      notes: body.notes,
-    }, currentUser);
-  }
-
-  // console.log(id , status , phaseUnlocked);
-
-  // تشيك إن فيه payment succeeded للمريض ده
-  const payment = await Payment.findOne({
-    patient: id,
-    status: "succeeded",
-    phaseUnlocked: true,
-  });
-
-  if (!payment) {
-    throw ApiError.forbidden(
-      "Payment required to proceed to Preparation. Please complete the payment first."
-    );
-  }
-
   return transitionPhase(id, {
     fromPhase: phasesEnum.RITIRO,
     toPhase: phasesEnum.PREPARAZIONE,
-    notes: body.notes || `Paid —  aligners`,
+    notes: body.notes,
   }, currentUser);
 };
 
