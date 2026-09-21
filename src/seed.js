@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
-import { ADMIN_NAME, ADMIN_EMAIL, ADMIN_PASSWORD, MONGODB_URI } from "./config/env.config.js";
+import { ADMIN_NAME, ADMIN_EMAIL, ADMIN_PASSWORD, MONGODB_URI, DISTRIBUTOR_NAME, DISTRIBUTOR_EMAIL, SEED_AREA_MANAGER_EMAIL, 
+SEED_AREA_MANAGER_NAME, SEED_DOCTOR_NAME, SEED_DOCTOR_EMAIL
+ } from "./config/env.config.js";
 import User from "./models/User.model.js";
 import Doctor from "./models/Doctor.model.js";
 import AreaManager from "./models/AreaManager.model.js";
@@ -46,16 +48,16 @@ const seedAdmin = async () => {
 // ── Seed Sample Distributor ───────────────────────────────────────────────────
 
 const seedDistributor = async () => {
-  const exists = await Distributor.findOne({ companyName: "Smilepharm Milano" });
+  const exists = await Distributor.findOne({ companyName: DISTRIBUTOR_NAME });
   if (exists) {
     console.log("⚠️  Sample distributor already exists — skipping.");
     return exists;
   }
 
   const distributor = await Distributor.create({
-    companyName: "Smilepharm Milano",
+    companyName: DISTRIBUTOR_NAME,
     address: "Via Roma, 1 - Milano",
-    email: "smilepharm@milano.it",
+    email: DISTRIBUTOR_EMAIL,
     phone: "02 12345678",
   });
 
@@ -66,17 +68,17 @@ const seedDistributor = async () => {
 // ── Seed Sample AreaManager ───────────────────────────────────────────────────
 
 const seedAreaManager = async () => {
-  const exists = await AreaManager.findOne({ email: "manager@bellasmile.com" });
+  const exists = await AreaManager.findOne({ email: SEED_AREA_MANAGER_EMAIL });
   if (exists) {
     console.log("⚠️  Sample area manager already exists — skipping.");
     return exists;
   }
 
   const areaManager = await AreaManager.create({
-    firstName: "Marco",
+    firstName: SEED_AREA_MANAGER_NAME,
     lastName: "Rossi",
     city: "Milano",
-    email: "manager@bellasmile.com",
+    email: SEED_AREA_MANAGER_EMAIL,
     phone: "333 1234567",
   });
 
@@ -87,7 +89,7 @@ const seedAreaManager = async () => {
 // ── Seed Sample Doctor ────────────────────────────────────────────────────────
 
 const seedDoctor = async (distributor, areaManager) => {
-  const email = "doctor@bellasmile.com";
+  const email = SEED_DOCTOR_EMAIL;
 
   const existingUser = await User.findOne({ email });
   if (existingUser) {
@@ -96,9 +98,9 @@ const seedDoctor = async (distributor, areaManager) => {
   }
 
   const user = await User.create({
-    name: `Luca Bianchi`,
+    name: SEED_DOCTOR_NAME,
     email,
-    password: "Doctor@12345",
+    password: SEED_DOCTOR_PASSWORD,
     role: "doctor",
     mustChangePassword: true,
     isActive: true,
@@ -106,8 +108,8 @@ const seedDoctor = async (distributor, areaManager) => {
 
   await Doctor.create({
     user: user._id,
-    firstName: "Luca",
-    lastName: "Bianchi",
+    firstName: SEED_DOCTOR_NAME,
+    lastName: "One",
     address: "Via Dante, 5",
     city: "Roma",
     email,
@@ -119,7 +121,7 @@ const seedDoctor = async (distributor, areaManager) => {
 
   console.log("✅ Sample doctor created:");
   console.log("   Email   :", email);
-  console.log("   Password: Doctor@12345");
+  console.log("   Password: " + SEED_DOCTOR_PASSWORD);
   console.log("   ⚠️  mustChangePassword = true");
 };
 

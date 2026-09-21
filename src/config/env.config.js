@@ -68,3 +68,15 @@ export const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET;
 export const ADMIN_NAME = process.env.SEED_ADMIN_NAME;
 export const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL;
 export const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD;
+
+export const DOCTOR_NAME = process.env.SEED_DOCTOR_NAME;
+export const DOCTOR_EMAIL = process.env.SEED_DOCTOR_EMAIL;
+export const DOCTOR_PASSWORD = process.env.SEED_DOCTOR_PASSWORD;
+
+export const DISTRIBUTOR_NAME = process.env.SEED_DISTRIBUTOR_NAME;
+export const DISTRIBUTOR_EMAIL = process.env.SEED_DISTRIBUTOR_EMAIL;
+export const DISTRIBUTOR_PASSWORD = process.env.SEED_DISTRIBUTOR_PASSWORD;
+
+export const AREA_MANAGER_NAME = process.env.SEED_AREA_MANAGER_NAME;
+export const AREA_MANAGER_EMAIL = process.env.SEED_AREA_MANAGER_EMAIL;
+export const AREA_MANAGER_PASSWORD = process.env.SEED_AREA_MANAGER_PASSWORD;
