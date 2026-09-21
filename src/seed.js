@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { ADMIN_NAME, ADMIN_EMAIL, ADMIN_PASSWORD, MONGODB_URI, DISTRIBUTOR_NAME, DISTRIBUTOR_EMAIL, SEED_AREA_MANAGER_EMAIL, 
-SEED_AREA_MANAGER_NAME, SEED_DOCTOR_NAME, SEED_DOCTOR_EMAIL
+SEED_AREA_MANAGER_NAME, SEED_DOCTOR_NAME, SEED_DOCTOR_EMAIL, SEED_DOCTOR_PASSWORD
  } from "./config/env.config.js";
 import User from "./models/User.model.js";
 import Doctor from "./models/Doctor.model.js";
@@ -142,7 +142,7 @@ const run = async () => {
     console.log("\n🎉 Seed completed successfully!");
     console.log("─────────────────────────────────");
     console.log(`Admin  → ${ADMIN_EMAIL}  / ${ADMIN_PASSWORD}`);
-    console.log("Doctor → doctor@bellasmile.com / Doctor@12345");
+    console.log(`Doctor → ${SEED_DOCTOR_EMAIL}  / ${SEED_DOCTOR_PASSWORD}`);
     console.log("─────────────────────────────────");
 
   } catch (err) {
