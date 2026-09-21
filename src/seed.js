@@ -1,6 +1,10 @@
 import mongoose from "mongoose";
-import { ADMIN_NAME, ADMIN_EMAIL, ADMIN_PASSWORD, MONGODB_URI, DISTRIBUTOR_NAME, DISTRIBUTOR_EMAIL, SEED_AREA_MANAGER_EMAIL, 
-SEED_AREA_MANAGER_NAME, SEED_DOCTOR_NAME, SEED_DOCTOR_EMAIL, SEED_DOCTOR_PASSWORD
+import { 
+  ADMIN_NAME, ADMIN_EMAIL, ADMIN_PASSWORD, 
+  MONGODB_URI, 
+  DISTRIBUTOR_NAME, DISTRIBUTOR_EMAIL, 
+  AREA_MANAGER_EMAIL, AREA_MANAGER_NAME, 
+  DOCTOR_NAME, DOCTOR_EMAIL, DOCTOR_PASSWORD
  } from "./config/env.config.js";
 import User from "./models/User.model.js";
 import Doctor from "./models/Doctor.model.js";
@@ -68,17 +72,17 @@ const seedDistributor = async () => {
 // ── Seed Sample AreaManager ───────────────────────────────────────────────────
 
 const seedAreaManager = async () => {
-  const exists = await AreaManager.findOne({ email: SEED_AREA_MANAGER_EMAIL });
+  const exists = await AreaManager.findOne({ email: AREA_MANAGER_EMAIL });
   if (exists) {
     console.log("⚠️  Sample area manager already exists — skipping.");
     return exists;
   }
 
   const areaManager = await AreaManager.create({
-    firstName: SEED_AREA_MANAGER_NAME,
+    firstName: AREA_MANAGER_NAME,
     lastName: "Rossi",
     city: "Milano",
-    email: SEED_AREA_MANAGER_EMAIL,
+    email: AREA_MANAGER_EMAIL,
     phone: "333 1234567",
   });
 
@@ -89,7 +93,7 @@ const seedAreaManager = async () => {
 // ── Seed Sample Doctor ────────────────────────────────────────────────────────
 
 const seedDoctor = async (distributor, areaManager) => {
-  const email = SEED_DOCTOR_EMAIL;
+  const email = DOCTOR_EMAIL;
 
   const existingUser = await User.findOne({ email });
   if (existingUser) {
@@ -98,9 +102,9 @@ const seedDoctor = async (distributor, areaManager) => {
   }
 
   const user = await User.create({
-    name: SEED_DOCTOR_NAME,
+    name: DOCTOR_NAME,
     email,
-    password: SEED_DOCTOR_PASSWORD,
+    password: DOCTOR_PASSWORD,
     role: "doctor",
     mustChangePassword: true,
     isActive: true,
@@ -108,7 +112,7 @@ const seedDoctor = async (distributor, areaManager) => {
 
   await Doctor.create({
     user: user._id,
-    firstName: SEED_DOCTOR_NAME,
+    firstName: DOCTOR_NAME,
     lastName: "One",
     address: "Via Dante, 5",
     city: "Roma",
@@ -121,7 +125,7 @@ const seedDoctor = async (distributor, areaManager) => {
 
   console.log("✅ Sample doctor created:");
   console.log("   Email   :", email);
-  console.log("   Password: " + SEED_DOCTOR_PASSWORD);
+  console.log("   Password: " + DOCTOR_PASSWORD);
   console.log("   ⚠️  mustChangePassword = true");
 };
 
@@ -142,7 +146,7 @@ const run = async () => {
     console.log("\n🎉 Seed completed successfully!");
     console.log("─────────────────────────────────");
     console.log(`Admin  → ${ADMIN_EMAIL}  / ${ADMIN_PASSWORD}`);
-    console.log(`Doctor → ${SEED_DOCTOR_EMAIL}  / ${SEED_DOCTOR_PASSWORD}`);
+    console.log(`Doctor → ${DOCTOR_EMAIL}  / ${DOCTOR_PASSWORD}`);
     console.log("─────────────────────────────────");
 
   } catch (err) {
